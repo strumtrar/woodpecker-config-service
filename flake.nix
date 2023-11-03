@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    utils.url = "github:numtide/flake-utils";
 
     # <https://github.com/nix-systems/nix-systems>
     systems.url = "github:nix-systems/default-linux";
@@ -12,6 +13,7 @@
     self,
     nixpkgs,
     systems,
+    utils,
     ...
   }: let
     inherit (nixpkgs) lib;
@@ -38,6 +40,8 @@
 	  };
 	  vendorSha256 = "sha256-eHqNjjs5Pa+WTDvdR8kmoBELwciJEyNUuG9kROk91Ig=";
 
+	  CGO_ENABLED = 1;
+
           meta = with lib; {
   	    description = "Woodpecker CI external configuration service";
             homepage = "https://github.com/woodpecker-ci/example-config-service";
@@ -55,6 +59,8 @@
         woodpecker-config-service;
     });
 
+    defaultApp = utils.lib.mkApp { drv = self.packages.x86_64-linux.default; };
+
      # Nixos module
     nixosModules.woodpecker-config-service = { pkgs, lib, config, ... }:
       with lib;
@@ -62,8 +68,8 @@
       in {
         meta.maintainers = with lib.maintainers; [ strumtrar ];
         options.services.woodpecker-config-service = {
-          package = lib.mkPackageOptionMD pkgs "woodpecker-config-service" { };
           enable = lib.mkEnableOption (lib.mdDoc description);
+          package = lib.mkPackageOptionMD pkgs "woodpecker-config-service" { };
           extraGroups = lib.mkOption {
             type = lib.types.listOf lib.types.str;
             default = [ ];
@@ -93,32 +99,18 @@
 
           # Service
           systemd.services.woodpecker-config-service = {
-            environment = cfg.environment // {
-              HOME = "/run/woodpecker-config-service";
-            };
-
-            path = with pkgs; [
-              bash
-              coreutils
-              git
-              git-lfs
-              gnutar
-              gzip
-              nix
-            ];
-
             description = "Woodpecker Configuration Service";
             wantedBy = [ "multi-user.target" ];
             after = [ "network-online.target" ];
             wants = [ "network-online.target" ];
 
             serviceConfig = {
-
-              RuntimeDirectory = "woodpecker-config-service";
-              User = "woodpecker-config-service";
               DynamicUser = true;
+              User = "woodpecker-config-service";
+              RuntimeDirectory = "woodpecker-config-service";
               SupplementaryGroups = cfg.extraGroups;
-              ExecStart = lib.getExe cfg.package;
+	      EnvironmentFile = lib.optional (cfg.environmentFlie != null) cfg.environmentFile;
+              ExecStart = "${cfg.package}/bin/woodpecker-confige-service";
               Restart = "on-failure";
               RestartSec = 15;
               CapabilityBoundingSet = "";
