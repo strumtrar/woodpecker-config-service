@@ -102,75 +102,29 @@
 
 	# Service
 	systemd.services.woodpecker-config-service = {
+	  description = "Woodpecker Configuration Service";
+	  wantedBy = [ "multi-user.target" ];
+	  after = [ "network-online.target" ];
+	  wants = [ "network-online.target" ];
 
-	environment = cfg.environment // {
-	  HOME = "/run/woodpecker-config-service";
-	};
-
-	description = "Woodpecker Configuration Service";
-	wantedBy = [ "multi-user.target" ];
-	after = [ "network-online.target" ];
-	wants = [ "network-online.target" ];
-
-	path = with pkgs; [
-	    bash
-	    coreutils
-	    git
-	    git-lfs
-	    gnutar
-	    gzip
-	    nix
-	];
-
-	serviceConfig = {
-          RuntimeDirectory = "woodpecker-config-service";
-	  # RuntimeDirectoryMode = "0700";
-
-          User = "woodpecker-config-service";
-	  DynamicUser = true;
-	  SupplementaryGroups = cfg.extraGroups;
-	  ExecStart = lib.getExe cfg.package;
-	  Restart = "on-failure";
-	  RestartSec = 15;
-	  CapabilityBoundingSet = "";
-	  NoNewPrivileges = true;
-	  ProtectSystem = "strict";
-	  PrivateTmp = true;
-	  PrivateDevices = true;
-	  PrivateUsers = true;
-	  ProtectHostname = true;
-	  ProtectClock = true;
-	  ProtectKernelTunables = true;
-	  ProtectKernelModules = true;
-	  ProtectKernelLogs = true;
-	  ProtectControlGroups = true;
-	  RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6" ];
-	  LockPersonality = true;
-	  MemoryDenyWriteExecute = true;
-	  RestrictRealtime = true;
-	  RestrictSUIDSGID = true;
-	  PrivateMounts = true;
-	  SystemCallArchitectures = "native";
-	  SystemCallFilter = "~@clock @privileged @cpu-emulation @debug @keyring @module @mount @obsolete @raw-io @reboot @swap";
-	  BindPaths = [
-	      "/nix/var/nix/daemon-socket/socket"
-	      "/run/nscd/socket"
-	  ];
-	  BindReadOnlyPaths = [
-	      "${config.environment.etc."ssh/ssh_known_hosts".source}:/etc/ssh/ssh_known_hosts"
-	      "-/etc/hosts"
-	      "-/etc/localtime"
-	      "-/etc/nsswitch.conf"
-	      "-/etc/resolv.conf"
-	      "-/etc/ssl/certs"
-	      "-/etc/static/ssl/certs"
-	      "/etc/group:/etc/group"
-	      "/etc/machine-id"
-	      "/etc/nix:/etc/nix"
-	      "/etc/passwd:/etc/passwd"
-	      # channels are dynamic paths in the nix store, therefore we need to bind mount the whole thing
-	      "/nix/"
-	  ];
+	  serviceConfig = {
+	    EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
+            RuntimeDirectory = "woodpecker-config-service";
+            User = "woodpecker-config-service";
+	    ExecStart = "${cfg.package}/bin/woodpecker-config-service";
+	    Restart = "on-failure";
+	    NoNewPrivileges = true;
+	    ProtectSystem = "strict";
+	    PrivateTmp = true;
+	    PrivateDevices = true;
+	    PrivateUsers = true;
+	    ProtectHostname = true;
+	    ProtectKernelTunables = true;
+	    ProtectKernelModules = true;
+	    ProtectControlGroups = true;
+	    RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6" ];
+	    LockPersonality = true;
+	    MemoryDenyWriteExecute = true;
  	 };
        };
      };
