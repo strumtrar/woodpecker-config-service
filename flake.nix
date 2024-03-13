@@ -95,39 +95,22 @@
 
 	config = lib.mkIf cfg.enable {
 
-	nixpkgs.overlays = [ self.overlays.default ];
+	  nixpkgs.overlays = [ self.overlays.default ];
+	  nix.settings.allowed-users = [ "woodpecker-config-service" ];
 
-	# Allow user to run nix
-	nix.settings.allowed-users = [ "woodpecker-config-service" ];
+	  systemd.services.woodpecker-config-service = {
+	    description = "Woodpecker Configuration Service";
+	    wantedBy = [ "multi-user.target" ];
 
-	# Service
-	systemd.services.woodpecker-config-service = {
-	  description = "Woodpecker Configuration Service";
-	  wantedBy = [ "multi-user.target" ];
-	  after = [ "network-online.target" ];
-	  wants = [ "network-online.target" ];
-
-	  serviceConfig = {
-	    EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
-            RuntimeDirectory = "woodpecker-config-service";
-            User = "woodpecker-config-service";
-	    ExecStart = "${cfg.package}/bin/woodpecker-config-service";
-	    Restart = "on-failure";
-	    NoNewPrivileges = true;
-	    ProtectSystem = "strict";
-	    PrivateTmp = true;
-	    PrivateDevices = true;
-	    PrivateUsers = true;
-	    ProtectHostname = true;
-	    ProtectKernelTunables = true;
-	    ProtectKernelModules = true;
-	    ProtectControlGroups = true;
-	    RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6" ];
-	    LockPersonality = true;
-	    MemoryDenyWriteExecute = true;
- 	 };
-       };
-     };
-   };
- };
+	    serviceConfig = {
+	      EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
+              RuntimeDirectory = "woodpecker-config-service";
+              User = "woodpecker-config-service";
+	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
+	      Restart = "on-failure";
+ 	    };
+          };
+        };
+      };
+    };
 }
