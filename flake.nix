@@ -36,9 +36,9 @@
 	    owner = "woodpecker-ci";
 	    repo = "example-config-service";
 	    rev = "master";
-	    sha256 = "sha256-DTjotK0yrho6zBTfpRHxeUoIWlHUxtKHOa9k1/pAxoQ=";
+	    sha256 = "sha256-6TWmWlLPn6Es0ILdA68ov7QB32Q8bxPzsbZdKf2oeys=";
 	  };
-	  vendorSha256 = "sha256-eHqNjjs5Pa+WTDvdR8kmoBELwciJEyNUuG9kROk91Ig=";
+	  vendorSha256 = "sha256-JI8E0KgedI7bjddtyWCOgkZ2YZhcwleCJgB6P/0kT4g=";
 
 	  CGO_ENABLED = 1;
 
@@ -93,35 +93,87 @@
           };
         };
 
-        config = lib.mkIf cfg.enable {
-          nixpkgs.overlays = [ self.overlays.default ];
+	config = lib.mkIf cfg.enable {
 
-          # Allow user to run nix
-          nix.settings.allowed-users = [ "woodpecker-config-service" ];
+	nixpkgs.overlays = [ self.overlays.default ];
 
-          # Service
-          systemd.services.woodpecker-config-service = {
-            environment = cfg.environment // {
-              HOME = "/run/woodpecker-config-service";
-            };
-            description = "Woodpecker Configuration Service";
-            wantedBy = [ "multi-user.target" ];
-            after = [ "network-online.target" ];
-            wants = [ "network-online.target" ];
+	# Allow user to run nix
+	nix.settings.allowed-users = [ "woodpecker-config-service" ];
 
-            serviceConfig = {
-              User = "woodpecker-config-service";
-              RuntimeDirectory = "woodpecker-config-service";
-              SupplementaryGroups = cfg.extraGroups;
-              ExecStart = lib.getExe cfg.package;
-              Restart = "on-failure";
-              RestartSec = 15;
-            };
-          };
-        };
-      };
+	# Service
+	systemd.services.woodpecker-config-service = {
 
-    formatter = eachSystem (system: nixpkgs.legacyPackages.${system}.alejandra);
+	environment = cfg.environment // {
+	  HOME = "/run/woodpecker-config-service";
+	};
 
-  };
+	description = "Woodpecker Configuration Service";
+	wantedBy = [ "multi-user.target" ];
+	after = [ "network-online.target" ];
+	wants = [ "network-online.target" ];
+
+	path = with pkgs; [
+	    bash
+	    coreutils
+	    git
+	    git-lfs
+	    gnutar
+	    gzip
+	    nix
+	];
+
+	serviceConfig = {
+          RuntimeDirectory = "woodpecker-config-service";
+	  # RuntimeDirectoryMode = "0700";
+
+          User = "woodpecker-config-service";
+	  DynamicUser = true;
+	  SupplementaryGroups = cfg.extraGroups;
+	  ExecStart = lib.getExe cfg.package;
+	  Restart = "on-failure";
+	  RestartSec = 15;
+	  CapabilityBoundingSet = "";
+	  NoNewPrivileges = true;
+	  ProtectSystem = "strict";
+	  PrivateTmp = true;
+	  PrivateDevices = true;
+	  PrivateUsers = true;
+	  ProtectHostname = true;
+	  ProtectClock = true;
+	  ProtectKernelTunables = true;
+	  ProtectKernelModules = true;
+	  ProtectKernelLogs = true;
+	  ProtectControlGroups = true;
+	  RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6" ];
+	  LockPersonality = true;
+	  MemoryDenyWriteExecute = true;
+	  RestrictRealtime = true;
+	  RestrictSUIDSGID = true;
+	  PrivateMounts = true;
+	  SystemCallArchitectures = "native";
+	  SystemCallFilter = "~@clock @privileged @cpu-emulation @debug @keyring @module @mount @obsolete @raw-io @reboot @swap";
+	  BindPaths = [
+	      "/nix/var/nix/daemon-socket/socket"
+	      "/run/nscd/socket"
+	  ];
+	  BindReadOnlyPaths = [
+	      "${config.environment.etc."ssh/ssh_known_hosts".source}:/etc/ssh/ssh_known_hosts"
+	      "-/etc/hosts"
+	      "-/etc/localtime"
+	      "-/etc/nsswitch.conf"
+	      "-/etc/resolv.conf"
+	      "-/etc/ssl/certs"
+	      "-/etc/static/ssl/certs"
+	      "/etc/group:/etc/group"
+	      "/etc/machine-id"
+	      "/etc/nix:/etc/nix"
+	      "/etc/passwd:/etc/passwd"
+	      # channels are dynamic paths in the nix store, therefore we need to bind mount the whole thing
+	      "/nix/"
+	  ];
+ 	 };
+       };
+     };
+   };
+ };
 }
