@@ -67,18 +67,7 @@
       let cfg = config.services.woodpecker-config-service;
       in {
         meta.maintainers = with lib.maintainers; [ strumtrar ];
-        options.services.woodpecker-config-service = {
-          enable = lib.mkEnableOption (lib.mdDoc description);
-          package = lib.mkPackageOptionMD pkgs "woodpecker-config-service" { };
-          extraGroups = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = [ ];
-            example = [ "podman" ];
-            description = lib.mdDoc ''
-              Additional groups for the systemd service.
-            '';
-          };
-
+        options.services.woodpecker-config-service = moduleOptions;
           environment = lib.mkOption {
             default = { };
             type = lib.types.attrsOf lib.types.str;
@@ -91,20 +80,13 @@
                 }
               '';
           };
-        };
-
-	config = lib.mkIf cfg.enable {
-
+	config = {
 	  nixpkgs.overlays = [ self.overlays.default ];
-	  nix.settings.allowed-users = [ "woodpecker-config-service" ];
-
 	  systemd.services.woodpecker-config-service = {
 	    description = "Woodpecker Configuration Service";
 	    wantedBy = [ "multi-user.target" ];
-
 	    serviceConfig = {
 	      EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
-              RuntimeDirectory = "woodpecker-config-service";
               User = "woodpecker-config-service";
 	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
 	      Restart = "on-failure";
@@ -112,5 +94,5 @@
           };
         };
       };
-    };
+   };
 }
