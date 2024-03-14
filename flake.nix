@@ -68,8 +68,8 @@
       in {
         meta.maintainers = with lib.maintainers; [ strumtrar ];
         options.services.woodpecker-config-service = {
-          package = lib.mkPackageOptionMD pkgs "flake-pipeliner" {};
-          enable = lib.mkEnableOpiton (lib.mdDoc description);
+          package = lib.mkPackageOptionMD pkgs "woodpecker-config-service" {};
+          enable = lib.mkEnableOption (lib.mdDoc description);
           environment = lib.mkOption {
             default = { };
             type = lib.types.attrsOf lib.types.str;
