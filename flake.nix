@@ -88,8 +88,10 @@
 	  systemd.services.woodpecker-config-service = {
 	    description = "Woodpecker Configuration Service";
 	    wantedBy = [ "multi-user.target" ];
+	    environment = cfg.environment // {
+		HOME = "/run/woodpecker-config-service";
+	    };
 	    serviceConfig = {
-	      EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
               User = "woodpecker-config-service";
 	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
 	      Restart = "on-failure";
