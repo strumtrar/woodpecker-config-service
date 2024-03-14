@@ -38,7 +38,7 @@
 	    rev = "master";
 	    sha256 = "sha256-6TWmWlLPn6Es0ILdA68ov7QB32Q8bxPzsbZdKf2oeys=";
 	  };
-	  vendorSha256 = "sha256-JI8E0KgedI7bjddtyWCOgkZ2YZhcwleCJgB6P/0kT4g=";
+	  vendorHash = "sha256-JI8E0KgedI7bjddtyWCOgkZ2YZhcwleCJgB6P/0kT4g=";
 
 	  CGO_ENABLED = 1;
 
@@ -93,7 +93,7 @@
 	    };
 	    serviceConfig = {
               User = "woodpecker-config-service";
-	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
+	      ExecStart = "${cfg.package}/bin/example-config-service";
 	      Restart = "on-failure";
  	    };
           };
