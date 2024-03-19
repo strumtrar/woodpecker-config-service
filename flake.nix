@@ -32,12 +32,7 @@
 
           pname = "woodpecker-config-service";
           version = "v1.0.0";
-          src = fetchFromGitHub {
-	    owner = "woodpecker-ci";
-	    repo = "example-config-service";
-	    rev = "master";
-	    sha256 = "sha256-6TWmWlLPn6Es0ILdA68ov7QB32Q8bxPzsbZdKf2oeys=";
-	  };
+          src = ./.;
 	  vendorHash = "sha256-JI8E0KgedI7bjddtyWCOgkZ2YZhcwleCJgB6P/0kT4g=";
 
 	  CGO_ENABLED = 1;
