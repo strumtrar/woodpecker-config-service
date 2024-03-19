@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 
 	"github.com/joho/godotenv"
@@ -73,8 +73,6 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "can't read body", http.StatusBadRequest)
 		return
 	}
-	log.Println("Received the following body:")
-	log.Println(string(body))
 
 	err = json.Unmarshal(body, &req)
 	if err != nil {
@@ -90,58 +88,65 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if buildPipeline, err := getBuildPipeline(req); err != nil {
+	if buildPipeline, name, err := getBuildPipeline(req); err != nil {
 		log.Printf("Failed to create pipeline: %s", err)
 		w.WriteHeader(http.StatusNoContent) // use default config
 	} else {
 		log.Println("Returning pipeline:\n", string(buildPipeline))
 		w.WriteHeader(http.StatusOK)
-
-		if retb, err := w.Write(buildPipeline); err != nil {
-			log.Printf("Failed to write the pipeline: %s", err)
-		} else {
-			log.Printf("%v bytes written", retb)
+		err := json.NewEncoder(w).Encode(map[string]interface{}{"configs": []config{
+			{
+				Name: name,
+				Data: string(buildPipeline),
+			},
+		}})
+		if err != nil {
+			log.Printf("Erron on encoding json %v\n", err)
 		}
+//		if retb, err := w.Write(buildPipeline); err != nil {
+//			log.Printf("Failed to write the pipeline: %s", err)
+//		} else {
+//			log.Printf("%v bytes written", retb)
+//		}
 	}
 }
 
-func getBuildPipeline(req incoming) ([]byte, error) {
-	buildConfigURL := fmt.Sprintf(
-		"'git+%s?ref=%s&rev=%s#woodpecker'",
-		envConfigs,
-		req.Build.Ref,
-		req.Build.Commit,
-	)
+func getContent(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("GET error: %v", err)
+	}
+	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Status error: %v", resp.StatusCode)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("Read body: %v", err)
+	}
+
+	return data, nil
+}
+
+func getBuildPipeline(req incoming) ([]byte, string, error) {
 	var pipelinePath string
 
 	pipelinePath = strings.Replace(req.Build.Ref, "/", "_", -1)
 	pipelinePath = strings.Replace(pipelinePath, ".", "_", -1)
 
 	buildPipelineURL := fmt.Sprintf(
-		"'git+%s/%s/%s.yaml'",
+		"%s/raw/branch/main/%s/%s.yaml",
 		envPipelines,
 		req.Repo.Name,
 		pipelinePath,
 	)
 
-	log.Println("Get Configs from:", buildConfigURL)
-	log.Println("Get Pipeline from:", buildPipelineURL)
-
-	pwd, _ := os.Getwd()
-	pipeline, err := os.ReadFile(filepath.Join(pwd, buildPipelineURL))
+	b, err := getContent(buildPipelineURL)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	//err = json.NewEncoder(w).Encode(map[string]interface{}{"configs": []config{
-	//	{
-	//		Name: "central pipe",
-	//		Data: overrideConfiguration,
-	//	},
-	//}})
-	//if err != nil {
-	//	log.Printf("Error on encoding json %v\n", err)
-	//}
 
-	return pipeline, nil
+	return b, pipelinePath, nil
 }
