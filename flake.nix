@@ -84,12 +84,15 @@
 	  systemd.services.woodpecker-config-service = {
 	    description = "Woodpecker Configuration Service";
 	    wantedBy = [ "multi-user.target" ];
+	    after = [ "network-online.target" ];
+	    wants = [ "network-online.target" ];
 	    environment = cfg.environment // {
 		HOME = "/run/woodpecker-config-service";
 	    };
 	    serviceConfig = {
-              User = "woodpecker-config-service";
-	      ExecStart = "${cfg.package}/bin/example-config-service";
+	      Type = "forking";
+	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
+	      ExecStop = "pkill woodpecker-config-service";
 	      Restart = "on-failure";
  	    };
           };
