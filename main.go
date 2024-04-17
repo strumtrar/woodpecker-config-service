@@ -53,7 +53,7 @@ func main() {
 	pipelineHandler := http.HandlerFunc(serveConfig)
 	http.HandleFunc("/", pipelineHandler)
 
-	log.Printf("Starting Woodpecer Config Server at: %s\n", envHost)
+	log.Printf("Starting Woodpecker Config Server at: %s\n", envHost)
 	err = http.ListenAndServe(envHost, nil)
 	if err != nil {
 		log.Fatalf("Error on listen: %v", err)
@@ -73,6 +73,9 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "can't read body", http.StatusBadRequest)
 		return
 	}
+
+	log.Println("Received the following body for processing:")
+	log.Println(string(body))
 
 	err = json.Unmarshal(body, &req)
 	if err != nil {
@@ -103,11 +106,6 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("Erron on encoding json %v\n", err)
 		}
-//		if retb, err := w.Write(buildPipeline); err != nil {
-//			log.Printf("Failed to write the pipeline: %s", err)
-//		} else {
-//			log.Printf("%v bytes written", retb)
-//		}
 	}
 }
 
@@ -132,20 +130,52 @@ func getContent(url string) ([]byte, error) {
 
 func getBuildPipeline(req incoming) ([]byte, string, error) {
 	var pipelinePath string
+	var buildPipelineURL string
 
-	pipelinePath = strings.Replace(req.Build.Ref, "/", "_", -1)
+	filterRegEx := "YOCTO.*"
+
+	pipelinePath = strings.Replace(req.Build.Branch, "/", "_", -1)
 	pipelinePath = strings.Replace(pipelinePath, ".", "_", -1)
 
-	buildPipelineURL := fmt.Sprintf(
-		"%s/raw/branch/main/%s/%s.yaml",
-		envPipelines,
-		req.Repo.Name,
-		pipelinePath,
-	)
+	filter := regexp.MustCompile(filterRegEx)
+	if filter.MatchString(req.Repo.Name) {
+		log.Printf("Got a YOCTO BSP")
 
+		envs := map[string]string{}
+
+		for k,v := range req.Build.AdditionalVariables {
+			envs[k] = v
+		}
+
+		buildPipelineURL = fmt.Sprintf(
+			"%s/raw/branch/master/%s/%s_%s.yaml",
+			envPipelines,
+			req.Repo.Name,
+			pipelinePath,
+			envs["Machine"],
+		)
+	} else {
+		buildPipelineURL = fmt.Sprintf(
+			"%s/raw/branch/master/%s/%s.yaml",
+			envPipelines,
+			req.Repo.Name,
+			pipelinePath,
+		)
+	}
+	log.Printf("Fetch pipeline from %s", buildPipelineURL)
 	b, err := getContent(buildPipelineURL)
 	if err != nil {
-		return nil, "", err
+		buildPipelineURL := fmt.Sprintf(
+			"%s/raw/branch/master/%s/default.yaml",
+			envPipelines,
+			req.Repo.Name,
+		)
+
+		log.Printf("Fetch fallback pipeline from %s", buildPipelineURL)
+		b, err = getContent(buildPipelineURL)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	return b, pipelinePath, nil

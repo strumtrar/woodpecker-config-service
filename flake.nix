@@ -31,17 +31,17 @@
         buildGoModule {
 
           pname = "woodpecker-config-service";
-          version = "v1.0.0";
+          version = "v1.1.0";
           src = ./.;
-	  vendorHash = "sha256-JI8E0KgedI7bjddtyWCOgkZ2YZhcwleCJgB6P/0kT4g=";
+	  vendorSha256 = "sha256-cRXXMZ2KUp9A4HhiNrtClKP8FMnQ5YqKd/D3EOwPeSg=";
 
 	  CGO_ENABLED = 1;
 
           meta = with lib; {
   	    description = "Woodpecker CI external configuration service";
-            homepage = "https://github.com/woodpecker-ci/example-config-service";
+            homepage = "https://github.com/strumtrar/woodpecker-config-service";
             license = licenses.gpl3;
-            mainProgram = "example-config-service";
+            mainProgram = "woodpecker-config-service";
             maintainers = with maintainers; [ strumtrar ];
           };
         };
