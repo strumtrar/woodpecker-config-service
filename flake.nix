@@ -86,15 +86,13 @@
 	    wantedBy = [ "multi-user.target" ];
 	    after = [ "network-online.target" ];
 	    wants = [ "network-online.target" ];
-	    environment = cfg.environment // {
-		HOME = "/run/woodpecker-config-service";
-	    };
 	    serviceConfig = {
 	      Type = "forking";
 	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
 	      ExecStop = "pkill woodpecker-config-service";
 	      Restart = "on-failure";
  	    };
+	    inherit (cfg) environment;
           };
         };
       };
