@@ -91,6 +91,7 @@
 	      ExecStop = "pkill woodpecker-config-service";
 	      Restart = "on-failure";
 	      RestartSec = 15;
+	      Type = "simple";
  	    };
 	    inherit (cfg) environment;
           };
