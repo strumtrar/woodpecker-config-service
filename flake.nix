@@ -92,6 +92,7 @@
 	      Restart = "on-failure";
 	      RestartSec = 15;
 	      Type = "simple";
+	      TimeoutStartSec = 300;
  	    };
 	    inherit (cfg) environment;
           };
