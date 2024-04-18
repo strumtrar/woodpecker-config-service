@@ -87,10 +87,10 @@
 	    after = [ "network-online.target" ];
 	    wants = [ "network-online.target" ];
 	    serviceConfig = {
-	      Type = "forking";
 	      ExecStart = "${cfg.package}/bin/woodpecker-config-service";
 	      ExecStop = "pkill woodpecker-config-service";
 	      Restart = "on-failure";
+	      RestartSec = 15;
  	    };
 	    inherit (cfg) environment;
           };
