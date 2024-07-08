@@ -33,7 +33,7 @@
           pname = "woodpecker-config-service";
           version = "v1.1.0";
           src = ./.;
-	  vendorSha256 = "sha256-cRXXMZ2KUp9A4HhiNrtClKP8FMnQ5YqKd/D3EOwPeSg=";
+	  vendorHash = "sha256-cRXXMZ2KUp9A4HhiNrtClKP8FMnQ5YqKd/D3EOwPeSg=";
 
 	  CGO_ENABLED = 1;
 
