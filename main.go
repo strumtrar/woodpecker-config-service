@@ -165,10 +165,12 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 	log.Printf("Fetch pipeline from %s", buildPipelineURL)
 	b, err := getContent(buildPipelineURL)
 	if err != nil {
+		var arch = strings.Split(req.Build.Branch, "/")[1]
 		buildPipelineURL := fmt.Sprintf(
-			"%s/raw/branch/master/%s/default.yaml",
+			"%s/raw/branch/master/%s/default_%s.yaml",
 			envPipelines,
 			req.Repo.Name,
+			arch,
 		)
 
 		log.Printf("Fetch fallback pipeline from %s", buildPipelineURL)
