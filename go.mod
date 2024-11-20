@@ -11,4 +11,5 @@ require (
 require (
 	github.com/robfig/cron v1.2.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+        github.com/BurntSushi/toml v1.4.0 // indirect
 )

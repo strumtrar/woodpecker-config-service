@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"github.com/BurntSushi/toml"
 
 	"github.com/joho/godotenv"
 	"go.woodpecker-ci.org/woodpecker/v2/server/model"
@@ -18,6 +19,12 @@ import (
 type config struct {
 	Name string `json:"name"`
 	Data string `json:"data"`
+}
+
+type branchlut struct {
+	Repo string
+	Base string
+	Pipeline string
 }
 
 type incoming struct {
@@ -74,9 +81,6 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Received the following body for processing:")
-	log.Println(string(body))
-
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		http.Error(w, "Failed to parse JSON"+err.Error(), http.StatusBadRequest)
@@ -128,6 +132,52 @@ func getContent(url string) ([]byte, error) {
 	return data, nil
 }
 
+func getLUT(url string) ([]byte, error) {
+	var b []byte
+	var buildPipelineURL string
+	var lut branchlut
+
+	log.Printf("Fetch LUT from %s", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("GET error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Status error: %v", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		return nil, err
+	}
+
+	log.Printf("Got %q", body)
+
+	meta, err := toml.Decode(string(body[:]), &lut)
+	if err != nil {
+		log.Printf("Failed to decode toml %v", err)
+		return nil, err
+	}
+	fmt.Println(lut)
+	fmt.Println(meta)
+	buildPipelineURL = fmt.Sprintf(
+		"%s/raw/branch/master/%s/%s",
+		envPipelines,
+		lut.Repo,
+		lut.Pipeline,
+	)
+	log.Printf("Fetch pipeline from %s", buildPipelineURL)
+	b, err = getContent(buildPipelineURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
 func getBuildPipeline(req incoming) ([]byte, string, error) {
 	var pipelinePath string
 	var buildPipelineURL string
@@ -165,13 +215,41 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 	log.Printf("Fetch pipeline from %s", buildPipelineURL)
 	b, err := getContent(buildPipelineURL)
 	if err != nil {
-		var arch = strings.Split(req.Build.Branch, "/")[1]
-		buildPipelineURL := fmt.Sprintf(
-			"%s/raw/branch/master/%s/default_%s.yaml",
-			envPipelines,
-			req.Repo.Name,
-			arch,
-		)
+		var tokens = strings.Split(req.Build.Branch, "/")
+		if tokens[0] == "worktree" {
+			buildPipelineURL = fmt.Sprintf(
+				"%s/raw/branch/master/%s/default_%s.yaml",
+				envPipelines,
+				req.Repo.Name,
+				tokens[1],
+			)
+		} else if tokens[1] == "topic" {
+			buildPipelineURL = fmt.Sprintf(
+				"%s/raw/branch/master/lookup/%s.toml",
+				envPipelines,
+				strings.Replace(req.Build.Branch, "/", "_", -1),
+			)
+			log.Printf("Try to lookup pipeline from %s", buildPipelineURL)
+			b, err = getLUT(buildPipelineURL)
+			if err != nil {
+				return nil, "", err
+			}
+			return b, pipelinePath, nil
+
+		} else if tokens[1] == "topic" {
+			buildPipelineURL = fmt.Sprintf(
+				"%s/raw/branch/master/%s/default_%s.yaml",
+				envPipelines,
+				req.Repo.Name,
+				tokens[2],
+			)
+		} else {
+			buildPipelineURL = fmt.Sprintf(
+				"%s/raw/branch/master/%s/default.yaml",
+				envPipelines,
+				req.Repo.Name,
+			)
+		}
 
 		log.Printf("Fetch fallback pipeline from %s", buildPipelineURL)
 		b, err = getContent(buildPipelineURL)
