@@ -36,7 +36,6 @@
 	  vendorHash = "sha256-4WZ2Ufc5XvCxli2cUkXsR/JP6xo4fcaFuKzNRpcTlaM=";
 
 	  CGO_ENABLED = 1;
-	  vendorHash = "sha256-mvkfun1vsHyQwwzUS9c/Fc/XFYErIwnEX5vCGqOumY0=";
 
           meta = with lib; {
   	    description = "Woodpecker CI external configuration service";
