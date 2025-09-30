@@ -35,8 +35,6 @@
           src = ./.;
 	  vendorHash = "sha256-4WZ2Ufc5XvCxli2cUkXsR/JP6xo4fcaFuKzNRpcTlaM=";
 
-	  CGO_ENABLED = 1;
-
           meta = with lib; {
   	    description = "Woodpecker CI external configuration service";
             homepage = "https://github.com/strumtrar/woodpecker-config-service";
