@@ -87,6 +87,11 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Repo == nil || req.Build == nil {
+		http.Error(w, "missing repo or pipeline in request", http.StatusBadRequest)
+		return
+	}
+
 	filter := regexp.MustCompile(envFilterRegex)
 
 	if !filter.MatchString(req.Build.Ref) {
@@ -216,14 +221,14 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 	b, err := getContent(buildPipelineURL)
 	if err != nil {
 		var tokens = strings.Split(req.Build.Branch, "/")
-		if tokens[0] == "worktree" {
+		if tokens[0] == "worktree" && len(tokens) > 1 {
 			buildPipelineURL = fmt.Sprintf(
 				"%s/raw/branch/master/%s/default_%s.yaml",
 				envPipelines,
 				req.Repo.Name,
 				tokens[1],
 			)
-		} else if tokens[1] == "topic" {
+		} else if len(tokens) > 1 && tokens[1] == "topic" {
 			buildPipelineURL = fmt.Sprintf(
 				"%s/raw/branch/master/lookup/%s.toml",
 				envPipelines,
@@ -236,13 +241,6 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 			}
 			return b, pipelinePath, nil
 
-		} else if tokens[1] == "topic" {
-			buildPipelineURL = fmt.Sprintf(
-				"%s/raw/branch/master/%s/default_%s.yaml",
-				envPipelines,
-				req.Repo.Name,
-				tokens[2],
-			)
 		} else {
 			buildPipelineURL = fmt.Sprintf(
 				"%s/raw/branch/master/%s/default.yaml",
