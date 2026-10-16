@@ -33,7 +33,7 @@
           pname = "woodpecker-config-service";
           version = "v1.1.0";
           src = ./.;
-	  vendorHash = "sha256-4WZ2Ufc5XvCxli2cUkXsR/JP6xo4fcaFuKzNRpcTlaM=";
+	  vendorHash = "sha256-9t6zIewP2QIZf8vrWkSCCk/CGf8/JxGkWJLZgdCnvXU=";
 
           meta = with lib; {
   	    description = "Woodpecker CI external configuration service";
