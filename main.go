@@ -38,6 +38,10 @@ var (
 	envPipelines	string
 	envFilterRegex	string
 	envHost		string
+
+	// Repos whose name matches this regex never fall back to the config from
+	// the repo itself: without a central pipeline they get a failing one.
+	failClosedRe	*regexp.Regexp
 )
 
 func main() {
@@ -55,6 +59,14 @@ func main() {
 
 	if envHost == "" || envConfigs == "" {
 		log.Fatal("Please make sure CONFIG_SERVICE_HOST and CONFIG_CONFIGS_REPO is set properly")
+	}
+
+	if v := os.Getenv("CONFIG_SERVICE_FAIL_CLOSED_FILTER"); v != "" {
+		failClosedRe, err = regexp.Compile(v)
+		if err != nil {
+			log.Fatalf("Invalid CONFIG_SERVICE_FAIL_CLOSED_FILTER: %v", err)
+		}
+		log.Printf("Fail closed for repos matching %q", v)
 	}
 
 	pipelineHandler := http.HandlerFunc(serveConfig)
@@ -102,6 +114,10 @@ func serveConfig(w http.ResponseWriter, r *http.Request) {
 
 	if buildPipeline, name, err := getBuildPipeline(req); err != nil {
 		log.Printf("Failed to create pipeline: %s", err)
+		if failClosedRe != nil && failClosedRe.MatchString(req.Repo.Name) {
+			serveRejection(w, req)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent) // use default config
 	} else {
 		log.Println("Returning pipeline:\n", string(buildPipeline))
@@ -257,4 +273,41 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 	}
 
 	return b, pipelinePath, nil
+}
+
+// serveRejection answers with a pipeline that only fails, so that the config from
+// the repo (which may be controlled by an agent) never runs with the secrets of
+// the central pipelines. The message is sanitized: repo and branch come from the
+// pusher.
+func serveRejection(w http.ResponseWriter, req incoming) {
+	clean := func(s string) string {
+		return strings.Map(func(r rune) rune {
+			switch {
+			case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+				return r
+			case r == '.' || r == '_' || r == '-' || r == '/':
+				return r
+			}
+			return '?'
+		}, s)
+	}
+	msg := fmt.Sprintf("No central pipeline for repo %s, branch %s. Topic branches need a lookup file lookup/%s.toml in the pipelines repo, which only the maintainer adds.",
+		clean(req.Repo.Name), clean(req.Build.Branch),
+		clean(strings.Replace(req.Build.Branch, "/", "_", -1)))
+	data := fmt.Sprintf(`steps:
+  - name: no-central-pipeline
+    image: docker.io/library/busybox
+    commands:
+      - echo %q
+      - exit 1
+`, msg)
+
+	log.Printf("Returning rejection pipeline for %s (%s)", req.Repo.Name, req.Build.Branch)
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(map[string]interface{}{"configs": []config{
+		{Name: "rejected", Data: data},
+	}})
+	if err != nil {
+		log.Printf("Error on encoding json %v\n", err)
+	}
 }
