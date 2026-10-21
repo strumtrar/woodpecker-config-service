@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"github.com/BurntSushi/toml"
@@ -153,13 +154,13 @@ func getContent(url string) ([]byte, error) {
 	return data, nil
 }
 
-func getLUT(url string) ([]byte, error) {
+func getLUT(lutURL string) ([]byte, error) {
 	var b []byte
 	var buildPipelineURL string
 	var lut branchlut
 
-	log.Printf("Fetch LUT from %s", url)
-	resp, err := http.Get(url)
+	log.Printf("Fetch LUT from %s", lutURL)
+	resp, err := http.Get(lutURL)
 	if err != nil {
 		return nil, fmt.Errorf("GET error: %v", err)
 	}
@@ -187,8 +188,8 @@ func getLUT(url string) ([]byte, error) {
 	buildPipelineURL = fmt.Sprintf(
 		"%s/raw/branch/master/%s/%s",
 		envPipelines,
-		lut.Repo,
-		lut.Pipeline,
+		url.PathEscape(lut.Repo),
+		url.PathEscape(lut.Pipeline),
 	)
 	log.Printf("Fetch pipeline from %s", buildPipelineURL)
 	b, err = getContent(buildPipelineURL)
@@ -221,16 +222,16 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 		buildPipelineURL = fmt.Sprintf(
 			"%s/raw/branch/master/%s/%s_%s.yaml",
 			envPipelines,
-			req.Repo.Name,
-			pipelinePath,
-			envs["Machine"],
+			url.PathEscape(req.Repo.Name),
+			url.PathEscape(pipelinePath),
+			url.PathEscape(envs["Machine"]),
 		)
 	} else {
 		buildPipelineURL = fmt.Sprintf(
 			"%s/raw/branch/master/%s/%s.yaml",
 			envPipelines,
-			req.Repo.Name,
-			pipelinePath,
+			url.PathEscape(req.Repo.Name),
+			url.PathEscape(pipelinePath),
 		)
 	}
 	log.Printf("Fetch pipeline from %s", buildPipelineURL)
@@ -241,14 +242,14 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 			buildPipelineURL = fmt.Sprintf(
 				"%s/raw/branch/master/%s/default_%s.yaml",
 				envPipelines,
-				req.Repo.Name,
-				tokens[1],
+				url.PathEscape(req.Repo.Name),
+				url.PathEscape(tokens[1]),
 			)
 		} else if len(tokens) > 1 && tokens[1] == "topic" {
 			buildPipelineURL = fmt.Sprintf(
 				"%s/raw/branch/master/lookup/%s.toml",
 				envPipelines,
-				strings.Replace(req.Build.Branch, "/", "_", -1),
+				url.PathEscape(strings.Replace(req.Build.Branch, "/", "_", -1)),
 			)
 			log.Printf("Try to lookup pipeline from %s", buildPipelineURL)
 			b, err = getLUT(buildPipelineURL)
@@ -261,7 +262,7 @@ func getBuildPipeline(req incoming) ([]byte, string, error) {
 			buildPipelineURL = fmt.Sprintf(
 				"%s/raw/branch/master/%s/default.yaml",
 				envPipelines,
-				req.Repo.Name,
+				url.PathEscape(req.Repo.Name),
 			)
 		}
 
