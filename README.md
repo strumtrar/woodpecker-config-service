@@ -22,6 +22,16 @@ that file and add a filtering regex. The repositories that have a name
 match the filtering regex will receive the config from `central-pipeline-config.yaml`,
 while all other repositories will continue using their original configuration.
 
+If no central pipeline can be found for a repository, the service answers with
+`204`, and woodpecker falls back to the configuration from the repository itself.
+That is a problem for repositories whose content is not trusted, because the
+pipeline would then run with the secrets of the repository. Set
+`CONFIG_SERVICE_FAIL_CLOSED_FILTER` to a regex for the repository names (for
+example `-agent$`): for those the service never falls back, it answers with a
+pipeline that only fails and names the lookup file that is missing. The path
+parts that come from the pusher (branch, repository name) are escaped before
+they are used in a URL.
+
 Then run using `go run .`.
 
 Make sure to configure your woodpecker instance with the correct **endpoint** and

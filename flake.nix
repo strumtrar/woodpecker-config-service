@@ -71,7 +71,9 @@
                 {
                   CONFIG_SERVICE_PUBLIC_KEY_FILE = "/path/to/key.txt";
                   CONFIG_SERVICE_HOST = "localhost:8000";
-                  CONFIG_SERVICE_OVERRIDE_FILTER = "test-*"
+                  CONFIG_SERVICE_OVERRIDE_FILTER = "test-*";
+                  # never fall back to the config of the repo itself for these
+                  CONFIG_SERVICE_FAIL_CLOSED_FILTER = "-agent$";
                 }
               '';
           };
